@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Refactorización - Solución 1</title>
+        <style>
+            /* Contenedor en paralelo (Izquierda vs Derecha) */
+            .comparador-container {
+                display: flex;
+                gap: 20px;
+                width: 100%;
+                font-family: 'Courier New', Courier, monospace;
+            }
+            .columna-codigo {
+                flex: 1;
+                background: #f8f9fa;
+                border: 1px solid #e9ecef;
+                border-radius: 6px;
+                padding: 15px;
+                overflow-x: auto;
+            }
+            .columna-codigo h3 {
+                margin-top: 0;
+                font-family: sans-serif;
+                color: #495057;
+                border-bottom: 2px solid #dee2e6;
+                padding-bottom: 8px;
+            }
+            /* Mantiene el contenedor seguro y con scroll si es necesario */
+            .columna-codigo code {
+                display: block;
+                width: max-content;
+                min-width: 100%;
+            }
+            
+            /* 1. FORZAR AL CONTENEDOR 'PRE' A NO ROMPER LÍNEAS NUNCA */
+            pre, pre * {
+                white-space: pre !important;
+                word-break: normal !important;
+                overflow-wrap: normal !important;
+            }
+            
+            pre {
+                margin: 0;
+                display: block !important;
+                width: max-content !important; /* Se estira obligatoriamente hasta el final de la línea más larga */
+                min-width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            
+            /* 2. ASEGURAR QUE LOS RECUADROS GRANDES SE ADAPTEN (MÉTODOS Y EXTRACCIONES) */
+            .recuadro-extraccion, .recuadro-metodo {
+                border: 2px dashed hsl(var(--tema-hue), 75%, 50%);
+                background-color: hsla(var(--tema-hue), 75%, 50%, 0.1);
+                border-radius: 4px;
+                padding: 4px 8px;
+                
+                display: block !important;
+                width: 100% !important; /* Rellena el 100% del max-content del 'pre' padre */
+                box-sizing: border-box !important;
+                
+                position: relative;
+                margin-top: 4px;
+                margin-bottom: 4px;
+                
+                /* Doble seguridad anti-salto de línea aquí dentro */
+                white-space: pre !important;
+                word-break: normal !important;
+                overflow-wrap: normal !important;
+            }
+
+            /* 3. RECUADRO CORTO PARA LAS LLAMADAS A MÉTODOS */
+            .recuadro-llamada {
+                border: 2px dashed hsl(var(--tema-hue), 75%, 50%);
+                background-color: hsla(var(--tema-hue), 75%, 50%, 0.1);
+                border-radius: 4px;
+                
+                /* Dejamos 32px de padding a la derecha para que entre el número holgadamente */
+                padding: 2px 32px 2px 6px; 
+                
+                /* inline-block hace que la caja se ajuste al tamaño del texto */
+                display: inline-block !important; 
+                box-sizing: border-box !important;
+                
+                position: relative;
+                white-space: pre !important;
+            }
+
+            /* 4. FORMATO UNIFICADO PARA LOS NÚMEROS (CIRCULITOS) */
+            .recuadro-extraccion::after, 
+            .recuadro-metodo::after, 
+            .recuadro-llamada::after {
+                content: attr(data-num); /* Lee el número que inyectas en Python */
+                position: absolute;
+                background-color: hsl(var(--tema-hue), 75%, 50%);
+                color: white;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                
+                /* Centrado del texto dentro del círculo */
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-family: sans-serif;
+                font-size: 11px;
+                font-weight: bold;
+                line-height: 1;
+            }
+            
+            /* Posicionamiento del número en recuadros grandes (arriba a la derecha) */
+            .recuadro-extraccion::after, 
+            .recuadro-metodo::after {
+                top: 6px;
+                right: 8px;
+            }
+
+            /* Posicionamiento del número en llamadas (centrado verticalmente a la derecha) */
+            .recuadro-llamada::after {
+                top: 50%;
+                right: 6px;
+                transform: translateY(-50%);
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Análisis de la Solución</h2>
+        
+        <div class="comparador-container">
+            <div class="columna-codigo">
+                <h3>Código Original</h3>
+                <pre><code>public void routeAPacketTo(IPAddress ip, int ttl, List&lt;Host&gt; usedHosts) throws Exception {
+        usedHosts.add(this);
+        if (ttl == 0) {//Problem in routing
+            throw new Exception(&quot;Routing problem, TTL is null : packet to &quot; + ip + &quot; deleted on host &quot; + this.getName());
+        }
+
+        if (!hasIP(ip)) { //Packet not arrived
+            Host nextHost = null;
+            List&lt;Host&gt; directlyAccessibleHosts = getDirectlyAccessibleHosts();
+            for (Host directlyAccessibleHost : directlyAccessibleHosts) {
+                if (directlyAccessibleHost.hasIP(ip)) //If the packet is for a neighbour, we send it to him
+                    nextHost = directlyAccessibleHost;
+            }
+            <span class="recuadro-extraccion" style="--tema-hue: 0;" data-num="1">if (nextHost != null) {
+                nextHost.routeAPacketTo(ip, ttl - 1, usedHosts);
+            } else {//We have to look in the routing table
+                List&lt;Host&gt; directlyAccessible = getDirectlyAccessibleHosts();
+                IPAddress nextIP = this.getRoutingTable().getNextHop(ip);
+                boolean nextHostFound = false;
+                for (Host aDirectlyAccessible : directlyAccessible) {
+                    if (aDirectlyAccessible.hasIP(nextIP)) { //Search the nextHop host object
+                        aDirectlyAccessible.routeAPacketTo(ip, ttl - 1, usedHosts);
+                        nextHostFound = true;
+                    }
+                }
+                if (!nextHostFound) { //Routing problem
+                    throw new Exception(&quot;Routing problem, there is no route corresponding to the packet or the destination host is on the internet&quot;);
+                }
+
+            }</span>
+        }
+
+    }</code></pre>
+            </div>
+            
+            <div class="columna-codigo">
+                <h3>Código Refactorizado</h3>
+                <pre><code>// ========================================================
+// SUSTITUIR EL MÉTODO ORIGINAL &#x27;routeAPacketTo&#x27; POR ESTE:
+// ========================================================
+public void routeAPacketTo(IPAddress ip, int ttl, List&lt;Host&gt; usedHosts) throws Exception {
+        usedHosts.add(this);
+        if (ttl == 0) {//Problem in routing
+            throw new Exception(&quot;Routing problem, TTL is null : packet to &quot; + ip + &quot; deleted on host &quot; + this.getName());
+        }
+
+        if (!hasIP(ip)) { //Packet not arrived
+            Host nextHost = null;
+            List&lt;Host&gt; directlyAccessibleHosts = getDirectlyAccessibleHosts();
+            for (Host directlyAccessibleHost : directlyAccessibleHosts) {
+                if (directlyAccessibleHost.hasIP(ip)) //If the packet is for a neighbour, we send it to him
+                    nextHost = directlyAccessibleHost;
+            }
+            <span class="recuadro-llamada" style="--tema-hue: 0;" data-num="1">routePacket(nextHost, ip, ttl, usedHosts);</span>
+        }
+
+    }
+
+// ========================================================
+// PEGAR ESTOS NUEVOS MÉTODOS DEBAJO DEL ANTERIOR:
+// ========================================================
+<span class="recuadro-metodo" style="--tema-hue: 0;" data-num="1">private void routePacket(Host nextHost, IPAddress ip, int ttl, List&lt;Host&gt; usedHosts) throws Exception {
+    if (nextHost != null) {
+                nextHost.routeAPacketTo(ip, ttl - 1, usedHosts);
+            } else {//We have to look in the routing table
+                List&lt;Host&gt; directlyAccessible = getDirectlyAccessibleHosts();
+                IPAddress nextIP = this.getRoutingTable().getNextHop(ip);
+                boolean nextHostFound = false;
+                for (Host aDirectlyAccessible : directlyAccessible) {
+                    if (aDirectlyAccessible.hasIP(nextIP)) { //Search the nextHop host object
+                        aDirectlyAccessible.routeAPacketTo(ip, ttl - 1, usedHosts);
+                        nextHostFound = true;
+                    }
+                }
+                if (!nextHostFound) { //Routing problem
+                    throw new Exception(&quot;Routing problem, there is no route corresponding to the packet or the destination host is on the internet&quot;);
+                }
+
+            }
+}</span>
+</code></pre>
+            </div>
+        </div>
+    </body>
+    </html>
+    

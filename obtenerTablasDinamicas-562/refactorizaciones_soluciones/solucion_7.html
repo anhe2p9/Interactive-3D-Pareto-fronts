@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Refactorización - Solución 7</title>
+        <style>
+            /* Contenedor en paralelo (Izquierda vs Derecha) */
+            .comparador-container {
+                display: flex;
+                gap: 20px;
+                width: 100%;
+                font-family: 'Courier New', Courier, monospace;
+            }
+            .columna-codigo {
+                flex: 1;
+                background: #f8f9fa;
+                border: 1px solid #e9ecef;
+                border-radius: 6px;
+                padding: 15px;
+                overflow-x: auto;
+            }
+            .columna-codigo h3 {
+                margin-top: 0;
+                font-family: sans-serif;
+                color: #495057;
+                border-bottom: 2px solid #dee2e6;
+                padding-bottom: 8px;
+            }
+            /* Mantiene el contenedor seguro y con scroll si es necesario */
+            .columna-codigo code {
+                display: block;
+                width: max-content;
+                min-width: 100%;
+            }
+            
+            /* 1. FORZAR AL CONTENEDOR 'PRE' A NO ROMPER LÍNEAS NUNCA */
+            pre, pre * {
+                white-space: pre !important;
+                word-break: normal !important;
+                overflow-wrap: normal !important;
+            }
+            
+            pre {
+                margin: 0;
+                display: block !important;
+                width: max-content !important; /* Se estira obligatoriamente hasta el final de la línea más larga */
+                min-width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            
+            /* 2. ASEGURAR QUE LOS RECUADROS GRANDES SE ADAPTEN (MÉTODOS Y EXTRACCIONES) */
+            .recuadro-extraccion, .recuadro-metodo {
+                border: 2px dashed hsl(var(--tema-hue), 75%, 50%);
+                background-color: hsla(var(--tema-hue), 75%, 50%, 0.1);
+                border-radius: 4px;
+                padding: 4px 8px;
+                
+                display: block !important;
+                width: 100% !important; /* Rellena el 100% del max-content del 'pre' padre */
+                box-sizing: border-box !important;
+                
+                position: relative;
+                margin-top: 4px;
+                margin-bottom: 4px;
+                
+                /* Doble seguridad anti-salto de línea aquí dentro */
+                white-space: pre !important;
+                word-break: normal !important;
+                overflow-wrap: normal !important;
+            }
+
+            /* 3. RECUADRO CORTO PARA LAS LLAMADAS A MÉTODOS */
+            .recuadro-llamada {
+                border: 2px dashed hsl(var(--tema-hue), 75%, 50%);
+                background-color: hsla(var(--tema-hue), 75%, 50%, 0.1);
+                border-radius: 4px;
+                
+                /* Dejamos 32px de padding a la derecha para que entre el número holgadamente */
+                padding: 2px 32px 2px 6px; 
+                
+                /* inline-block hace que la caja se ajuste al tamaño del texto */
+                display: inline-block !important; 
+                box-sizing: border-box !important;
+                
+                position: relative;
+                white-space: pre !important;
+            }
+
+            /* 4. FORMATO UNIFICADO PARA LOS NÚMEROS (CIRCULITOS) */
+            .recuadro-extraccion::after, 
+            .recuadro-metodo::after, 
+            .recuadro-llamada::after {
+                content: attr(data-num); /* Lee el número que inyectas en Python */
+                position: absolute;
+                background-color: hsl(var(--tema-hue), 75%, 50%);
+                color: white;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                
+                /* Centrado del texto dentro del círculo */
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-family: sans-serif;
+                font-size: 11px;
+                font-weight: bold;
+                line-height: 1;
+            }
+            
+            /* Posicionamiento del número en recuadros grandes (arriba a la derecha) */
+            .recuadro-extraccion::after, 
+            .recuadro-metodo::after {
+                top: 6px;
+                right: 8px;
+            }
+
+            /* Posicionamiento del número en llamadas (centrado verticalmente a la derecha) */
+            .recuadro-llamada::after {
+                top: 50%;
+                right: 6px;
+                transform: translateY(-50%);
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Análisis de la Solución</h2>
+        
+        <div class="comparador-container">
+            <div class="columna-codigo">
+                <h3>Código Original</h3>
+                <pre><code>private List&lt;DTOTablasDinamicas&gt; obtenerTablasDinamicas(List&lt;DTOEntregasForm&gt; camposObtenidos) {
+		List&lt;DTOTablasDinamicas&gt; tablas = new ArrayList&lt;&gt;();
+		<span class="recuadro-extraccion" style="--tema-hue: 0;" data-num="1">List&lt;String&gt; nombreTablas = new ArrayList&lt;&gt;();
+		List&lt;DTOCamposTabla&gt; camposTabla = new ArrayList&lt;&gt;();
+		int posicion = 0;
+		int posicionCadena = 0;
+		String tablaObtenida = null;
+		String tablaPerteneciente = null;
+		String cadena = &quot;&quot;;
+
+		/** Paso 1. Obtención de las tablas */
+		<span class="recuadro-extraccion" style="--tema-hue: 137;" data-num="2">for (DTOEntregasForm campo : camposObtenidos) {
+
+			/**
+			 * Paso 1.1. Se obtiene la posición en la cadena en la que se encuentra la
+			 * posicion (_0_)
+			 */
+			posicionCadena = campo.getNombreCampo().indexOf(SEPARADOR + posicion + SEPARADOR);
+
+			/** Paso 1.2. Si el valor es -1 quiere decir que no existe */
+			<span class="recuadro-extraccion" style="--tema-hue: 274;" data-num="3">if (posicionCadena != -1) {
+
+				/** Paso 1.3. Se extrae el nombre de la tabla */
+				tablaObtenida = campo.getNombreCampo().substring(0, posicionCadena);
+
+				/**
+				 * Paso 1.4. Se comprueba si ya existe en la lista que contiene las tablas, si
+				 * no existe se añade
+				 */
+				if (!comprobarExistencia(nombreTablas, cadena, tablaObtenida)) {
+					nombreTablas.add(tablaObtenida);
+				}
+			}</span>
+		}</span></span>
+
+		/** Paso 2. Obtención de las tablas con sus correspondientes campos */
+
+		/**
+		 * Paso 2.1. Se recorre la lista que contiene el nombre de las tablas obtenidas
+		 */
+		<span class="recuadro-extraccion" style="--tema-hue: 51;" data-num="4">for (String tabla : nombreTablas) {
+			/** Se reinicializan los campos de la tabla*/
+			camposTabla = new ArrayList&lt;&gt;();			
+
+			/**
+			 * Paso 2.2. Se recorre la lista que contiene TODOS los campos de tablas
+			 * dinámicas del formulario de entrada
+			 */
+			<span class="recuadro-extraccion" style="--tema-hue: 188;" data-num="5">for (DTOEntregasForm campoObtenido : camposObtenidos) {
+				/** Paso 2.3. Se extrae el nombre de la tabla a la que pertenece el campo. Recordamos que el nombre del campo sería así: nombreTabla_0_nombreCampo */
+
+				/** Se comprueba que el campo pertenece a la tabla actual*/
+				if (campoObtenido.getNombreCampo().contains(tabla) &amp;&amp; campoObtenido.getNombreCampo().substring(tabla.length(), tabla.length() + 1).equals(SEPARADOR)) {
+
+					<span class="recuadro-extraccion" style="--tema-hue: 325;" data-num="6">posicionCadena = campoObtenido.getNombreCampo().indexOf(SEPARADOR + extraerNumeracionCampo(tabla, campoObtenido.getNombreCampo()) + SEPARADOR);
+					
+					if (posicionCadena != -1) {
+						tablaPerteneciente = campoObtenido.getNombreCampo().substring(0, posicionCadena);
+						/**  Paso 2.4. Se comprueba si el campo obtenido pertenece a la tabla, si es así se inserta en la lsita que contiene los campos de la tabla */
+						if (tabla.equals(tablaPerteneciente)) {
+							DTOCamposTabla camposRecibidos = new DTOCamposTabla(campoObtenido.getNombreCampo(), campoObtenido.getValorCampo());
+							camposTabla.add(camposRecibidos);
+						}
+					}</span>
+				}
+			}
+			DTOTablasDinamicas tablaDinamicaObtenida = new DTOTablasDinamicas(tabla, camposTabla);
+			tablas.add(tablaDinamicaObtenida);</span>
+		}</span>
+		return tablas;
+	}</code></pre>
+            </div>
+            
+            <div class="columna-codigo">
+                <h3>Código Refactorizado</h3>
+                <pre><code>// ========================================================
+// SUSTITUIR EL MÉTODO ORIGINAL &#x27;obtenerTablasDinamicas&#x27; POR ESTE:
+// ========================================================
+private List&lt;DTOTablasDinamicas&gt; obtenerTablasDinamicas(List&lt;DTOEntregasForm&gt; camposObtenidos) {
+		List&lt;DTOTablasDinamicas&gt; tablas = new ArrayList&lt;&gt;();
+		<span class="recuadro-llamada" style="--tema-hue: 0;" data-num="1">obtenerNombreTablas(camposObtenidos);</span>
+
+		/** Paso 2. Obtención de las tablas con sus correspondientes campos */
+
+		/**
+		 * Paso 2.1. Se recorre la lista que contiene el nombre de las tablas obtenidas
+		 */
+		<span class="recuadro-llamada" style="--tema-hue: 51;" data-num="4">extraerCamposDeTablasDinamicas(nombreTablas, camposTabla, camposObtenidos, posicionCadena, tablaPerteneciente, tablas);</span>
+		return tablas;
+	}
+
+// ========================================================
+// PEGAR ESTOS NUEVOS MÉTODOS DEBAJO DEL ANTERIOR:
+// ========================================================
+<span class="recuadro-metodo" style="--tema-hue: 0;" data-num="1">private void obtenerNombreTablas(List&lt;DTOEntregasForm&gt; camposObtenidos) {
+    List&lt;String&gt; nombreTablas = new ArrayList&lt;&gt;();
+		List&lt;DTOCamposTabla&gt; camposTabla = new ArrayList&lt;&gt;();
+		int posicion = 0;
+		int posicionCadena = 0;
+		String tablaObtenida = null;
+		String tablaPerteneciente = null;
+		String cadena = &quot;&quot;;
+
+		/** Paso 1. Obtención de las tablas */
+		<span class="recuadro-llamada" style="--tema-hue: 137;" data-num="2">posicionCadena = extraerNombresTablas(camposObtenidos, posicionCadena, posicion, tablaObtenida, nombreTablas, cadena);</span>
+}</span>
+
+<span class="recuadro-metodo" style="--tema-hue: 137;" data-num="2">private int extraerNombresTablas(List&lt;DTOEntregasForm&gt; camposObtenidos, int posicionCadena, int posicion, String tablaObtenida, List&lt;String&gt; nombreTablas, String cadena) {
+    for (DTOEntregasForm campo : camposObtenidos) {
+
+			/**
+			 * Paso 1.1. Se obtiene la posición en la cadena en la que se encuentra la
+			 * posicion (_0_)
+			 */
+			posicionCadena = campo.getNombreCampo().indexOf(SEPARADOR + posicion + SEPARADOR);
+
+			/** Paso 1.2. Si el valor es -1 quiere decir que no existe */
+			<span class="recuadro-llamada" style="--tema-hue: 274;" data-num="3">agregarTablaSiNoExiste(posicionCadena, tablaObtenida, campo, nombreTablas, cadena);</span>
+		}
+    return posicionCadena;
+
+}</span>
+
+<span class="recuadro-metodo" style="--tema-hue: 274;" data-num="3">private void agregarTablaSiNoExiste(int posicionCadena, String tablaObtenida, DTOEntregasForm campo, List&lt;String&gt; nombreTablas, String cadena) {
+    if (posicionCadena != -1) {
+
+				/** Paso 1.3. Se extrae el nombre de la tabla */
+				tablaObtenida = campo.getNombreCampo().substring(0, posicionCadena);
+
+				/**
+				 * Paso 1.4. Se comprueba si ya existe en la lista que contiene las tablas, si
+				 * no existe se añade
+				 */
+				if (!comprobarExistencia(nombreTablas, cadena, tablaObtenida)) {
+					nombreTablas.add(tablaObtenida);
+				}
+			}
+}</span>
+
+<span class="recuadro-metodo" style="--tema-hue: 51;" data-num="4">private void extraerCamposDeTablasDinamicas(List&lt;String&gt; nombreTablas, List&lt;DTOCamposTabla&gt; camposTabla, List&lt;DTOEntregasForm&gt; camposObtenidos, int posicionCadena, String tablaPerteneciente, List&lt;DTOTablasDinamicas&gt; tablas) {
+    for (String tabla : nombreTablas) {
+			/** Se reinicializan los campos de la tabla*/
+			camposTabla = new ArrayList&lt;&gt;();			
+
+			/**
+			 * Paso 2.2. Se recorre la lista que contiene TODOS los campos de tablas
+			 * dinámicas del formulario de entrada
+			 */
+			<span class="recuadro-llamada" style="--tema-hue: 188;" data-num="5">agregarCamposATablaDinamica(camposObtenidos, tabla, posicionCadena, tablaPerteneciente, camposTabla, tablas);</span>
+		}
+}</span>
+
+<span class="recuadro-metodo" style="--tema-hue: 188;" data-num="5">private void agregarCamposATablaDinamica(List&lt;DTOEntregasForm&gt; camposObtenidos, String tabla, int posicionCadena, String tablaPerteneciente, List&lt;DTOCamposTabla&gt; camposTabla, List&lt;DTOTablasDinamicas&gt; tablas) {
+    for (DTOEntregasForm campoObtenido : camposObtenidos) {
+				/** Paso 2.3. Se extrae el nombre de la tabla a la que pertenece el campo. Recordamos que el nombre del campo sería así: nombreTabla_0_nombreCampo */
+
+				/** Se comprueba que el campo pertenece a la tabla actual*/
+				if (campoObtenido.getNombreCampo().contains(tabla) &amp;&amp; campoObtenido.getNombreCampo().substring(tabla.length(), tabla.length() + 1).equals(SEPARADOR)) {
+
+					<span class="recuadro-llamada" style="--tema-hue: 325;" data-num="6">verificarCampoEnTabla(posicionCadena, campoObtenido, tabla, tablaPerteneciente, camposTabla);</span>
+				}
+			}
+			DTOTablasDinamicas tablaDinamicaObtenida = new DTOTablasDinamicas(tabla, camposTabla);
+			tablas.add(tablaDinamicaObtenida);
+}</span>
+
+<span class="recuadro-metodo" style="--tema-hue: 325;" data-num="6">private void verificarCampoEnTabla(int posicionCadena, DTOEntregasForm campoObtenido, String tabla, String tablaPerteneciente, List&lt;DTOCamposTabla&gt; camposTabla) {
+    posicionCadena = campoObtenido.getNombreCampo().indexOf(SEPARADOR + extraerNumeracionCampo(tabla, campoObtenido.getNombreCampo()) + SEPARADOR);
+					
+					if (posicionCadena != -1) {
+						tablaPerteneciente = campoObtenido.getNombreCampo().substring(0, posicionCadena);
+						/**  Paso 2.4. Se comprueba si el campo obtenido pertenece a la tabla, si es así se inserta en la lsita que contiene los campos de la tabla */
+						if (tabla.equals(tablaPerteneciente)) {
+							DTOCamposTabla camposRecibidos = new DTOCamposTabla(campoObtenido.getNombreCampo(), campoObtenido.getValorCampo());
+							camposTabla.add(camposRecibidos);
+						}
+					}
+}</span>
+</code></pre>
+            </div>
+        </div>
+    </body>
+    </html>
+    
